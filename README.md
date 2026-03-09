@@ -23,3 +23,4 @@ Below is the text file and other formatting rules:
  * Date fields should be exactly as shown.
 
 This repository includes the source code and a text file to test it with.
+To use this application, please download all java/src files and make sure to run through the Application.java program in IntelliJ.
