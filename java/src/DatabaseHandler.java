@@ -196,7 +196,7 @@ public class DatabaseHandler {
         ArrayList<Review> searchList = new ArrayList<>();
         for(int i = 0; i < database.size(); i++) {
             Review r = database.get(i);
-            if(r.getName().equals(name) && r.getSubtype().equals(subtype)) {
+            if(r.getName().equals(name) && r.getSubtype() != null && r.getSubtype().equals(subtype)) {
                 found = true;
                 searchList.add(r);
             }
