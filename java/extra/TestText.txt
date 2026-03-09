@@ -1,0 +1,26 @@
+1-Pizza-3-GRAIN-null-null-2026-03-08
+2-Pasta-9-GRAIN-Carbonara-null-2026-02-14
+3-Apple-6-FRUIT-Honeycrisp-null-2025-09-18
+4-Chocolate Bar-8-SUGARS-Dark-null-2026-01-13
+5-Chickpeas-1-VEGETABLE-null-null-2021-04-15
+6-Salmon-9-MEAT-Grilled-null-2026-03-05
+7-Sweet Potato-7-VEGETABLE-Roasted-null-2026-02-28
+8-Blueberries-10-FRUIT-Fresh-null-2026-01-20
+9-Hummus-8-VEGETABLE-Roasted Red Pepper-null-2026-03-01
+10-Quinoa-6-GRAIN-White-null-2025-11-12
+11-Avocado-9-VEGETABLE-Hass-null-2026-02-15
+12-Greek Yogurt-8-DAIRY-Plain-null-2026-01-05
+13-Spinach-5-VEGETABLE-Baby-null-2026-03-07
+14-Almonds-7-MEAT-Smoked-null-2025-12-10
+15-Pad Thai-9-MEAT-Shrimp-null-2026-02-22
+16-Lentil Soup-8-VEGETABLE-Spicy-null-2026-01-30
+17-Mango-10-FRUIT-Ataulfo-null-2025-08-14
+18-Tacos al Pastor-9-MEAT-Pork-null-2026-03-04
+19-Sourdough Bread-7-GRAIN-Artisan-null-2026-02-10
+20-Steak-8-MEAT-Ribeye-null-2026-01-18
+21-Milk-5-BEVERAGE-Whole-null-2026-03-02
+22-Banana-6-FRUIT-Cavendish-null-2025-10-25
+23-Cheddar-9-DAIRY-Sharp-null-2026-01-22
+24-Shrimp-8-SEAFOOD-Jumbo-null-2026-02-05
+25-Brown Sugar-4-SUGARS-Light-null-2025-12-01
+26-Carrot-7-VEGETABLE-null-null-2026-01-19
