@@ -1,7 +1,7 @@
 /*
  * Brody Stewart
  * CEN 3024 - Software Development 1
- * March 8th, 2026
+ * March 18th, 2026
  * Application.java
  * This application handles all "database" interactions. For now, this means it handles all interactions
  * with the text file and all data handling. This means it's the main program for the Model part of the MVC.
@@ -251,6 +251,8 @@ public class DatabaseHandler {
     }
 
     public ArrayList<Review> getAll() {
+        if (database.isEmpty())
+            return null;
         return database;
     }
 }
