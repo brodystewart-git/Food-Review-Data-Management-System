@@ -1,7 +1,7 @@
 /*
  * Brody Stewart
  * CEN 3024 - Software Development 1
- * March 8th, 2026
+ * March 18th, 2026
  * ReviewSystem.java
  * This application is the main system (or the View & Controller) of the program.
  * The program can be called to load a file (loadFile()) based on a file path.
@@ -12,6 +12,7 @@
  */
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Scanner;
 import java.io.File;
 import java.time.LocalDate;
@@ -239,7 +240,7 @@ public class ReviewSystem {
         while(validCheck) {
             System.out.print("Would you like to add a subtype? (Y/N): ");
             String temp = scanner.nextLine();
-            if (temp.equals("Y")) {
+            if (temp.equalsIgnoreCase("Y")) {
                 System.out.print("Enter Subtype: ");
                 subtype = scanner.nextLine();
                 int l = subtype.length();
@@ -250,7 +251,7 @@ public class ReviewSystem {
                     wantSubtype = true;
                     validCheck = false;
                 }
-            }else if (temp.equals("N")){
+            }else if (temp.equalsIgnoreCase("N")){
                 validCheck = false;
                 break;
             }else {
@@ -283,6 +284,10 @@ public class ReviewSystem {
     private void dispAllHandler() {
         ArrayList<Review> reviews;
         reviews = dbHandler.getAll();
+        if (reviews == null){
+            System.out.println("Nothing in the database. Please add reviews first.");
+            return;
+        }
         System.out.println("\tDisplaying All Reviews: ");
         for(Review r: reviews) {
             r.print();
@@ -400,8 +405,9 @@ public class ReviewSystem {
             for (Category cat : Category.values()) {
                 System.out.println(cat);
             }
-            System.out.print("Enter Category (exactly as shown): ");
+            System.out.print("Enter Category: ");
             String temp = scanner.nextLine();
+            temp = temp.toUpperCase();
             try {
                 category = Category.valueOf(temp);
             }catch (IllegalArgumentException e) {
@@ -415,7 +421,7 @@ public class ReviewSystem {
         while(validCheck) {
             System.out.print("Would you like to add a subtype? (Y/N): ");
             String temp = scanner.nextLine();
-            if (temp.equals("Y")) {
+            if (temp.equalsIgnoreCase("Y")) {
                 System.out.print("Enter Subtype: ");
                 subtype = scanner.nextLine();
                 int l = subtype.length();
@@ -426,7 +432,7 @@ public class ReviewSystem {
                     wantSubtype = true;
                     validCheck = false;
                 }
-            }else if (temp.equals("N")){
+            }else if (temp.equalsIgnoreCase("N")){
                 validCheck = false;
                 break;
             }else {
@@ -439,7 +445,7 @@ public class ReviewSystem {
         while(validCheck) {
             System.out.print("Would you like to add a location? (Y/N): ");
             String temp = scanner.nextLine();
-            if (temp.equals("Y")) {
+            if (temp.equalsIgnoreCase("Y")) {
                 System.out.print("Enter Location: ");
                 location = scanner.nextLine();
                 int l = location.length();
@@ -450,7 +456,7 @@ public class ReviewSystem {
                     wantLocation = true;
                     validCheck = false;
                 }
-            }else if (temp.equals("N")){
+            }else if (temp.equalsIgnoreCase("N")){
                 validCheck = false;
                 break;
             }else {
@@ -466,6 +472,10 @@ public class ReviewSystem {
             String temp = scanner.nextLine();
             try {
                 date = LocalDate.parse(temp);
+                LocalDate today = LocalDate.now();
+                if (date.isAfter(today)){
+                    throw new java.time.format.DateTimeParseException("Invalid date value", temp, 0);
+                }
             }catch (DateTimeParseException e) {
                 validCheck = true;
                 System.out.println("Invalid input. Make sure it's YYYY-MM-DD, such as 2020-05-03.");
