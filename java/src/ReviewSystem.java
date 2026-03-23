@@ -118,7 +118,7 @@ public class ReviewSystem {
      */
     private void newReviewHandler() {
         System.out.println("\tAdding Review");
-        Review r = createReview(-1);
+        Review r = newReviewDialogue();
         int result = dbHandler.addReview(r, true);
         if (result == 1) {
             System.out.println("Successfully added Review:" );
@@ -335,10 +335,10 @@ public class ReviewSystem {
         System.out.println("Review to be updated: ");
         r.print();
         System.out.println("\n-----------------------------\n");
+
         //Updating portion.
         System.out.println("\tUpdating Review");
-        System.out.println("Please input information as if you were making a new review. Anything you want unchanged, retype as it was before.");
-        Review newR = createReview(ID);
+        Review newR = updateReviewDialogue(r);
         int result = dbHandler.updateReview(ID, newR);
         if (result == 1) {
             System.out.println("Successfully updated review with ID : " + ID);
@@ -348,16 +348,78 @@ public class ReviewSystem {
     }
 
     /*
-     * createReview is a temporary method for Phase 1.
+     * updateReviewDialogue is a temporary method for Phase 1.
      * This method was created to supplement the fact that there are no text-boxes in the GUI-less phase 1.
      * It will not exist in other phases.
-     * For now, it takes an integer ID and prompts the user for information about their Review.
-     * It ensures input is correct and then creates a new review.
-     * If the ID was -1, it generates a new ID to be used for that review.
-     * Otherwise, it keeps the same ID as that means it is actually going to be updating an old review.
+     * For now, it takes an integer ID and finds a review to be updated. It then displays this data.
+     * The User can then choose which information about the review they'd like to change.
      * It then returns the review.
      */
-    private Review createReview(int ID) {
+    private Review updateReviewDialogue(Review r){
+        boolean running = true;
+        Review updated = r;
+        int ID = r.getID();
+        String name = r.getName();
+        int rating = r.getRating();
+        Category cat = r.getCategory();
+        String subtype = r.getSubtype();
+        String location = r.getLocation();
+        LocalDate date = r.getDate();
+        while (running){
+            updated.print();
+            System.out.println("\n\t   Menu ");
+            System.out.println(
+                    "Name\t\tRating\n" +
+                    "Category\tSubtype\n" +
+                    "Location\tDate\n" +
+                    "Please type one you'd like to change or type 'exit' to save changes: "
+            );
+            String temp = scanner.nextLine();
+            temp = temp.toUpperCase();
+            boolean validCheck = true;
+            switch (temp) {
+                case "NAME":
+                    name = nameValidation(name);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "RATING":
+                    rating = ratingValidation(rating);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "CATEGORY":
+                    cat = categoryValidation(cat);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "SUBTYPE":
+                    subtype = subtypeValidation(subtype);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "LOCATION":
+                    location = locationValidation(location);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "DATE":
+                    date = dateValidation(date);
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+                case "EXIT":
+                    running = false;
+                    updated = createReview(ID, name, rating, cat, subtype, location, date);
+                    break;
+            }
+        }
+        return updated;
+    }
+
+    /*
+     * newReviewDialogue is a temporary method for Phase 1.
+     * This method was created to supplement the fact that there are no text-boxes in the GUI-less phase 1.
+     * It will not exist in other phases.
+     * For now, it takes an integer ID and prompts the user for information through the validation methods.
+     * It generates a new ID to be used for that review.
+     * It then returns the review.
+     */
+    private Review newReviewDialogue() {
         String name = null;
         int rating = -1;
         Category category = null;
@@ -365,24 +427,63 @@ public class ReviewSystem {
         String location = null;
         LocalDate date = null;
         Review rev = null;
-        boolean wantLocation = false;
-        boolean wantSubtype = false;
+
+        name = nameValidation(null);
+        rating = ratingValidation(-1);
+        category = categoryValidation(null);
+        subtype = subtypeValidation(null);
+        location = locationValidation(null);
+        date = dateValidation(null);
+        int ID  = dbHandler.idGenerator();
+        rev = createReview(ID, name, rating, category, subtype, location, date);
+        return rev;
+    }
+    /* createReview is for creating a review object.
+     * It's made to reduce redundancy in having to check which constructor to use, by having a method that does it.
+     * It returns the review object that is created.
+     */
+    private Review createReview(int ID, String name, int rating, Category cat, String subtype, String location, LocalDate date){
+        Review rev;
+        if (location != null && subtype != null) {
+            rev = new Review(ID, name, rating, cat, subtype, location, date);
+        }else if (location != null) {
+            rev = new Review(ID, name, rating, cat, date, location);
+        }else if (subtype != null) {
+            rev = new Review(ID, name, rating, cat, subtype, date);
+        }else {
+            rev = new Review(ID, name, rating, cat, date);
+        }
+        return rev;
+    }
+
+    /* nameValidation is a simple function which takes input in regard to the Name field of the review object.
+     * It checks if the text is valid: 2-100 characters and contains only letters.
+     * Returns the validated string.
+     */
+    private String nameValidation(String input){
+        String name = input;
         boolean validCheck = true;
-        //Get name
         while(validCheck) {
             System.out.print("Enter Food Name: ");
             name = scanner.nextLine();
             int l = name.length();
             if (l < 2 || l > 100 || name.isBlank() || name.matches(".*[^a-zA-Z ].*")) {
                 System.out.println("Invalid input. Make sure it's between 2 and 100 characters and only contains letters.");
-                name = null;
+                name = input;
             }else {
                 validCheck = false;
             }
         }
+        return name;
+    }
 
-        //Get Rating
-        validCheck = true;
+    /* ratingValidation is a simple function which takes input in regard to the rating field of the review object.
+     * It checks if the input is valid: an integer from 1-10.
+     * Returns the validated integer.
+     */
+    private int ratingValidation(int input){
+        int rating = input;
+        boolean validCheck = true;
         while(validCheck) {
             validCheck = false;
             System.out.print("Enter Food Rating (1-10): ");
@@ -393,12 +494,20 @@ public class ReviewSystem {
                     throw new NumberFormatException("Out of Range");
             }catch (NumberFormatException e) {
                 validCheck = true;
-                rating = -1;
+                rating = input;
                 System.out.println("Invalid input. Must be a number between 1 and 10 (inclusive).");
             }
         }
-        //Get Category
-        validCheck = true;
+        return rating;
+    }
+
+    /* categoryValidation is a simple function which takes input in regard to the category field of the review object.
+     * It checks if the input is valid: matches a category.
+     * Returns the validated category.
+     */
+    private Category categoryValidation(Category input){
+        Category category = input;
+        boolean validCheck = true;
         while(validCheck) {
             validCheck = false;
             System.out.println("\tCategories");
@@ -412,12 +521,21 @@ public class ReviewSystem {
                 category = Category.valueOf(temp);
             }catch (IllegalArgumentException e) {
                 validCheck = true;
-                category = null;
+                category = input;
                 System.out.println("Invalid input. Must be one of the given categories and written exactly as displayed.");
             }
         }
-        //Get Subtype
-        validCheck = true;
+        return category;
+    }
+
+    /* subtypeValidation is a simple function which takes input in regard to the subtype field of the review object.
+     * It checks if the input is valid: 2-50 characters, contains only letters.
+     * Returns the validated subtype or null if they don't want one.
+     */
+    private String subtypeValidation(String input){
+        String subtype = input;
+        boolean  validCheck = true;
+        boolean wantSubtype = false;
         while(validCheck) {
             System.out.print("Would you like to add a subtype? (Y/N): ");
             String temp = scanner.nextLine();
@@ -427,7 +545,7 @@ public class ReviewSystem {
                 int l = subtype.length();
                 if (l < 2 || l > 50 || subtype.isBlank() || subtype.matches(".*[^a-zA-Z ].*")) {
                     System.out.println("Invalid input. Make sure it's between 2 and 50 characters and only contains letters.");
-                    subtype = null;
+                    subtype = input;
                 }else {
                     wantSubtype = true;
                     validCheck = false;
@@ -440,8 +558,17 @@ public class ReviewSystem {
                 continue;
             }
         }
-        //Get Location
-        validCheck = true;
+        return subtype;
+    }
+
+    /* locationValidation is a simple function which takes input in regard to the location field of the review object.
+     * It checks if the input is valid: 2-100 characters and isn't blank.
+     * Returns the validated location or null if they don't want one.
+     */
+    private String locationValidation(String input){
+        String location = input;
+        boolean wantLocation = false;
+        boolean validCheck = true;
         while(validCheck) {
             System.out.print("Would you like to add a location? (Y/N): ");
             String temp = scanner.nextLine();
@@ -451,7 +578,7 @@ public class ReviewSystem {
                 int l = location.length();
                 if (l < 2 || l > 100 || location.isBlank()) {
                     System.out.println("Invalid input. Make sure it's between 2 and 100 characters and only contains letters.");
-                    location = null;
+                    location = input;
                 }else {
                     wantLocation = true;
                     validCheck = false;
@@ -464,8 +591,16 @@ public class ReviewSystem {
                 continue;
             }
         }
-        //Get Date
-        validCheck = true;
+        return location;
+    }
+
+    /* dateValidation is a simple function which takes input in regard to the date field of the review object.
+     * It checks if the input is valid: Meets the format of LocalDate (YYYY-MM-DD), ensures it's a valid date.
+     * Returns the validated date.
+     */
+    private LocalDate dateValidation(LocalDate input){
+        LocalDate date = input;
+        boolean validCheck = true;
         while(validCheck) {
             validCheck = false;
             System.out.print("Enter Date (YYYY-MM-DD): ");
@@ -478,21 +613,10 @@ public class ReviewSystem {
                 }
             }catch (DateTimeParseException e) {
                 validCheck = true;
+                date = input;
                 System.out.println("Invalid input. Make sure it's YYYY-MM-DD, such as 2020-05-03.");
             }
         }
-        //Completed input gathering, making review and passing to database.
-        if (ID == -1)
-            ID  = dbHandler.idGenerator();
-        if (wantLocation && wantSubtype) {
-            rev = new Review(ID, name, rating, category, subtype, location, date);
-        }else if (wantLocation) {
-            rev = new Review(ID, name, rating, category, date, location);
-        }else if (wantSubtype) {
-            rev = new Review(ID, name, rating, category, subtype, date);
-        }else {
-            rev = new Review(ID, name, rating, category, date);
-        }
-        return rev;
+        return date;
     }
 }
