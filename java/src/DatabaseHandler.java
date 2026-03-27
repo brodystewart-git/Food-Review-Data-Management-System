@@ -1,7 +1,7 @@
 /*
  * Brody Stewart
  * CEN 3024 - Software Development 1
- * March 18th, 2026
+ * March 26th, 2026
  * Application.java
  * This application handles all "database" interactions. For now, this means it handles all interactions
  * with the text file and all data handling. This means it's the main program for the Model part of the MVC.
@@ -17,6 +17,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Scanner;
 
 public class DatabaseHandler {
@@ -26,7 +27,6 @@ public class DatabaseHandler {
     // Simple constructor that gets the file path and loads the data from the file.
     public DatabaseHandler(String p){
         path = p;
-        loadDatabase();
     }
 
     /*
@@ -34,7 +34,7 @@ public class DatabaseHandler {
      * It uses scanner to take a new line, break it into pieces and turn it into a review object.
      * These objects are stored in the database ArrayList for program use.
      */
-    private void loadDatabase() {
+    public boolean loadDatabase() {
         this.database = new ArrayList<>();
         File file = new File(path);
 
@@ -63,29 +63,30 @@ public class DatabaseHandler {
                         LocalDate date = LocalDate.parse(parts[6]);
                         Review r = new Review(id, name, rating, category, subtype, location, date);
                         int added = this.addReview(r, false);
-                        if (added == 0)
-                            System.out.println("Error, ID on line " + i +" is incorrect. Skipping line.");
                     }
                 }catch(Exception e) {
-                    System.out.println("Error parsing line: " + i + ". Error: " + e.getMessage() + ".\n Skipping....");
+                    //Skipping this line.
                 }
             }
         }catch(FileNotFoundException e) {
-            System.out.println("Error. Could not access the file at: " + path);
+            return false;
         }
+        saveDatabase();
+        return true;
     }
 
     // The saveDatabase method saves the current database ArrayList to the path text file, using the toString method.
-    private void saveDatabase() {
+    private boolean saveDatabase() {
+        database.sort(Comparator.comparingInt(Review::getID));
         try(PrintWriter writer = new PrintWriter(new FileWriter(path))){
             for(Review r: database) {
                 if (r!= null) {
                     writer.println(r.toString());
                 }
             }
-            System.out.println("Successfully updated file.");
+            return true;
         }catch (IOException e) {
-            System.out.println("Error writing to file " + e.getMessage());
+            return false;
         }
     }
     // The idGenerator method generated the next free ID to be used in the database ArrayList.
@@ -117,9 +118,12 @@ public class DatabaseHandler {
             }
         }
         database.add(r);
+        boolean saved = false;
         if (save)
-            saveDatabase();
-        return 1;
+            saved =  saveDatabase();
+        if(saved)
+            return 1;
+        return 0;
     }
 
     /*
@@ -133,8 +137,9 @@ public class DatabaseHandler {
             Review r = database.get(i);
             if(r.getID() == id) {
                 database.remove(i);
-                saveDatabase();
-                return 1;
+                boolean saved = saveDatabase();
+                if(saved)
+                    return 1;
             }
         }
         return 0;
@@ -151,8 +156,9 @@ public class DatabaseHandler {
             Review d = database.get(i);
             if(d.getID() == id) {
                 database.set(i, r);
-                saveDatabase();
-                return 1;
+                boolean saved = saveDatabase();
+                if(saved)
+                    return 1;
             }
         }
         return 0;
