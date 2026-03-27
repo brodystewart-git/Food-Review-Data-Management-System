@@ -57,7 +57,7 @@ public class ReviewSystem {
         console.setLineWrap(true);
         console.setWrapStyleWord(true);
 
-        // Add extra elements and create add them to the page.
+        // Add  elements and add them to the page.
         JFrame frame = new JFrame("Food Review System");
         frame.setLayout(new BorderLayout());
         JScrollPane scrollPane = new JScrollPane(console);
@@ -688,8 +688,6 @@ public class ReviewSystem {
     // printToConsole is a simple method that "prints" a string to the console UI element.
     private void printToConsole(String content){
         console.append(content + "\n");
-
-        // Automatically move the scrollbar
         console.setCaretPosition(console.getDocument().getLength());
     }
 
