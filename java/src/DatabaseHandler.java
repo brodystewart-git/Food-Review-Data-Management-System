@@ -1,13 +1,14 @@
 /*
  * Brody Stewart
  * CEN 3024 - Software Development 1
- * March 26th, 2026
+ * April 3rd, 2026
  * Application.java
- * This application handles all "database" interactions. For now, this means it handles all interactions
- * with the text file and all data handling. This means it's the main program for the Model part of the MVC.
+ * This application handles all database interactions. This means that it will connect to a MySQL database
+ * with the given information from the ReviewSystem.
  * All methods in the program are for directly acting on data based on what the controller tells it to do.
  * Every time something is changed with the database array, it is saved to a text file.
  * The load, save and id generator methods are temporary, for the sake of accessing the text file.
+ * It adds, removes, finds and updates reviews in the database.
  */
 
 import java.io.File;
@@ -19,149 +20,162 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Scanner;
+import java.sql.*;
 
 public class DatabaseHandler {
-    private ArrayList<Review> database;
-    private String path;
+    private Connection connection;
+    private String serverAddress;
+    private String username;
+    private String password;
 
-    // Simple constructor that gets the file path and loads the data from the file.
-    public DatabaseHandler(String p){
-        path = p;
+    // Simple constructor that gets the MySQL database information.
+    public DatabaseHandler(String address, String user, String pass){
+        this.serverAddress = address;
+        this.username = user;
+        this.password = pass;
     }
 
-    /*
-     * The loadDatabase method loads data from the file indicated with the path variable.
-     * It uses scanner to take a new line, break it into pieces and turn it into a review object.
-     * These objects are stored in the database ArrayList for program use.
+    /* This is the connect method. Its task is to connect a MySQL database using the information provided by the user.
+     * It concatenates a string of server address to a real mysql address
+     * and attempts to connect using the username and password.
+     * If successful, it creates a food review database if there isn't one in the schema.
+     * Similarly, it creates a review table with all necessary values if there isn't one in the database.
+     * If it fails to connect or do any of these functions, it returns false. Otherwise, returns true.
      */
-    public boolean loadDatabase() {
-        this.database = new ArrayList<>();
-        File file = new File(path);
+    public boolean connect(){
+        try{
+            String url = "jdbc:mysql://" + serverAddress;
+            Connection con1 = DriverManager.getConnection(url, username, password);
+            Statement s = con1.createStatement();
+            s.executeUpdate("CREATE DATABASE IF NOT EXISTS food_review_project");
+            s.executeUpdate("USE food_review_project");
 
-        try (Scanner scanner = new Scanner(file)){
-            int i = 0;
-            while (scanner.hasNextLine()) {
-                i++;
-                String line = scanner.nextLine();
-                try {
-                    if (line.trim().isEmpty()) continue;
-                    // Should be split into ID,NAME,RATING,CATEGORY,SUBTYPE,LOCATION,DATE
-                    String[] parts = line.split("-", 7);
-                    if (parts.length < 7)
-                        throw new Exception ("Missing data fields.");
-                    if (parts.length == 7) {
-                        int id = Integer.parseInt(parts[0]);
-                        String name = parts[1];
-                        int rating = Integer.parseInt(parts[2]);
-                        Category category = Category.valueOf(parts[3]);
-                        String subtype = parts[4];
-                        if(subtype.equals("null"))
-                            subtype = null;
-                        String location = parts[5];
-                        if(location.equals("null"))
-                            location = null;
-                        LocalDate date = LocalDate.parse(parts[6]);
-                        Review r = new Review(id, name, rating, category, subtype, location, date);
-                        int added = this.addReview(r, false);
-                    }
-                }catch(Exception e) {
-                    //Skipping this line.
-                }
-            }
-        }catch(FileNotFoundException e) {
-            return false;
-        }
-        saveDatabase();
-        return true;
-    }
-
-    // The saveDatabase method saves the current database ArrayList to the path text file, using the toString method.
-    private boolean saveDatabase() {
-        database.sort(Comparator.comparingInt(Review::getID));
-        try(PrintWriter writer = new PrintWriter(new FileWriter(path))){
-            for(Review r: database) {
-                if (r!= null) {
-                    writer.println(r.toString());
-                }
-            }
+            String createTableSQL =
+                    "CREATE TABLE IF NOT EXISTS reviews (" +
+                    "id INT PRIMARY KEY," +
+                    "name VARCHAR(255)," +
+                    "rating INT," +
+                    "category VARCHAR(50)," +
+                    "subtype VARCHAR(100)," +
+                    "location VARCHAR(255)," +
+                    "date DATE)";
+            s.executeUpdate(createTableSQL);
+            this.connection = con1;
             return true;
-        }catch (IOException e) {
+        }catch(SQLException e){
+            System.err.println("Error connecting to database: " + e.getMessage());
             return false;
         }
     }
-    // The idGenerator method generated the next free ID to be used in the database ArrayList.
+
+    /* This is the idGenerator method. It returns the next free int ID.
+     * It asks the database for the highest id value and adds one, returning it.
+     * If this fails, it returns -1.
+     */
     public int idGenerator() {
-        int id = 1;
-        boolean idFound = true;
-        while(idFound) {
-            idFound = false;
-            for (Review r: database) {
-                if(r != null && r.getID() == id) {
-                    idFound = true;
-                    id++;
-                    break;
-                }
-            }
+        String query = "SELECT MAX(id) FROM reviews";
+        try (Statement s = connection.createStatement()){
+            ResultSet rs = s.executeQuery(query);
+            if(rs.next())
+                return rs.getInt(1) + 1;
+        }catch (SQLException e){
+            System.err.println("Error generating id: " + e.getMessage());
+            return -1;
         }
-        return id;
+        return -1;
     }
 
     /*
-     * The addReview method simply adds the review to the database, then calls the database to be saved.
-     * It returns 0 if it finds a matching ID in the system, meaning that something went wrong with the ID field.
+     * The addReview method simply adds a given review object to the database.
+     * It runs a query to insert the review into the database using the review's variables.
+     * It returns 0 if it fails to be added.
      * It returns 1 if it was successfully added.
     */
-    public int addReview(Review r, boolean save) {
-        for(Review d: database) {
-            if(r.getID() == d.getID()) {
-                return 0;  // Matching ID already in system
+    public int addReview(Review r) {
+        String query = "INSERT INTO reviews (id, name, rating, category, subtype, location, date) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setInt(1, r.getID());
+            s.setString(2, r.getName());
+            s.setInt(3, r.getRating());
+            s.setString(4, r.getCategory().name());
+            if(r.getSubtype() != null){
+                s.setString(5,r.getSubtype());
+            }else{
+                s.setNull(5, Types.VARCHAR);
             }
-        }
-        database.add(r);
-        boolean saved = false;
-        if (save)
-            saved =  saveDatabase();
-        if(saved)
+            if(r.getLocation() != null){
+                s.setString(6,r.getLocation());
+            }else{
+                s.setNull(6, Types.VARCHAR);
+            }
+            s.setDate(7, java.sql.Date.valueOf(r.getDate()));
+            s.executeUpdate();
             return 1;
-        return 0;
+        }catch (SQLException e){
+            System.err.println("Error adding review: " + e.getMessage());
+            return 0;
+        }
     }
 
     /*
-     * The remReview method takes an ID and tries to find it in the system.
-     * If found, it removes it from the database ArrayList then saves it to file.
-     * It returns 0 if it removes nothing.
+     * The remReview method takes an ID of a review and tried to remove that review from the database.
+     * It runs a query to delete the review at the given id on the database.
+     * It returns 0 if it fails.
      * It returns 1 if it was successfully removed.
      */
     public int remReview(int id) {
-        for(int i = 0; i < database.size(); i++) {
-            Review r = database.get(i);
-            if(r.getID() == id) {
-                database.remove(i);
-                boolean saved = saveDatabase();
-                if(saved)
-                    return 1;
-            }
-        }
-        return 0;
+      String query = "DELETE FROM reviews WHERE id = ?";
+
+      try (PreparedStatement s = connection.prepareStatement(query)){
+          s.setInt(1,id);
+          int rows = s.executeUpdate();
+          if(rows > 0){
+              return 1;
+          }
+          return 0;
+      }catch (SQLException e){
+          System.err.println("Error removing review: " + e.getMessage());
+          return 0;
+      }
     }
 
+
     /*
-     * The updateReview method sets the review in the database ArrayList at the given ID to the given review.
-     * When replaced, it updates the text file.
-     * It returns 0 if nothing is done.
+     * The updateReview method updates a review at a given ID with the given Review object.
+     * It runs a query on the database to update the review with the Review r's information at the given ID.
+     * It returns 0 if it fails.
      * It returns 1 if it was successfully updated.
      */
     public int updateReview(int id, Review r) {
-        for(int i = 0; i < database.size(); i++) {
-            Review d = database.get(i);
-            if(d.getID() == id) {
-                database.set(i, r);
-                boolean saved = saveDatabase();
-                if(saved)
-                    return 1;
+        String query = "UPDATE reviews SET name = ?, rating = ?, category = ?, subtype = ?, location = ?, date = ? WHERE id = ?";
+
+        try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setString(1, r.getName());
+            s.setInt(2, r.getRating());
+            s.setString(3, r.getCategory().name());
+            if(r.getSubtype() != null){
+                s.setString(4,r.getSubtype());
+            }else{
+                s.setNull(4, Types.VARCHAR);
             }
+            if(r.getLocation() != null){
+                s.setString(5,r.getLocation());
+            }else{
+                s.setNull(5, Types.VARCHAR);
+            }
+            s.setDate(6, java.sql.Date.valueOf(r.getDate()));
+            s.setInt(7, id);
+
+            int rows = s.executeUpdate();
+            if (rows > 0){
+                return 1;
+            }
+            return 0;
+        }catch (SQLException e){
+            System.err.println("Error updating review: " + e.getMessage());
+            return 0;
         }
-        return 0;
     }
 
     /*
@@ -171,21 +185,34 @@ public class DatabaseHandler {
      * If nothing is found, it returns null.
      */
     public ArrayList<Review> findReview(String name) {
-        if(database.isEmpty()) {
+        ArrayList<Review> reviews = new ArrayList<>();
+        String query = "SELECT * FROM reviews WHERE name = ?";
+
+        try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setString(1, name);
+
+            try(ResultSet rs = s.executeQuery()){
+                while(rs.next()){
+                    Review r = new Review(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getInt("rating"),
+                            Category.valueOf(rs.getString("category")),
+                            rs.getString("subtype"),
+                            rs.getString("location"),
+                            rs.getDate("date").toLocalDate()
+                    );
+                    reviews.add(r);
+                }
+            }
+            if(reviews.isEmpty()){
+                return null;
+            }
+            return reviews;
+        }catch (SQLException e){
+            System.err.println("Error finding reviews: " + e.getMessage());
             return null;
         }
-        boolean found = false;
-        ArrayList<Review> searchList = new ArrayList<>();
-        for(int i = 0; i < database.size(); i++) {
-            Review r = database.get(i);
-            if(r.getName().equals(name)) {
-                found = true;
-                searchList.add(r);
-            }
-        }
-        if(found)
-            return searchList;
-        return null;
     }
 
     /*
@@ -195,21 +222,35 @@ public class DatabaseHandler {
      * If nothing is found, it returns null.
      */
     public ArrayList<Review> findReview(String name, String subtype) {
-        if(database.isEmpty()) {
+        ArrayList<Review> reviews = new ArrayList<>();
+        String query = "SELECT * FROM reviews WHERE name = ? AND subtype = ?";
+
+        try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setString(1, name);
+            s.setString(2, subtype);
+
+            try(ResultSet rs = s.executeQuery()){
+                while(rs.next()){
+                    Review r = new Review(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getInt("rating"),
+                            Category.valueOf(rs.getString("category")),
+                            rs.getString("subtype"),
+                            rs.getString("location"),
+                            rs.getDate("date").toLocalDate()
+                    );
+                    reviews.add(r);
+                }
+            }
+            if(reviews.isEmpty()){
+                return null;
+            }
+            return reviews;
+        }catch (SQLException e){
+            System.err.println("Error finding reviews: " + e.getMessage());
             return null;
         }
-        boolean found = false;
-        ArrayList<Review> searchList = new ArrayList<>();
-        for(int i = 0; i < database.size(); i++) {
-            Review r = database.get(i);
-            if(r.getName().equals(name) && r.getSubtype() != null && r.getSubtype().equals(subtype)) {
-                found = true;
-                searchList.add(r);
-            }
-        }
-        if(found)
-            return searchList;
-        return null;
     }
 
     /*
@@ -219,46 +260,91 @@ public class DatabaseHandler {
      * If nothing is found, it returns null.
      */
     public Review findReview(int id) {
-        if(database.isEmpty()) {
+        String query = "SELECT * FROM reviews WHERE id = ?";
+
+        try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setInt(1, id);
+
+            try(ResultSet rs = s.executeQuery()){
+                if(rs.next()){
+                    Review r = new Review(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getInt("rating"),
+                            Category.valueOf(rs.getString("category")),
+                            rs.getString("subtype"),
+                            rs.getString("location"),
+                            rs.getDate("date").toLocalDate()
+                    );
+                    return r;
+                }
+            }
+            return null;
+        }catch (SQLException e){
+            System.err.println("Error finding review: " + e.getMessage());
             return null;
         }
-        for(int i = 0; i < database.size(); i++) {
-            Review r = database.get(i);
-            if(r.getID() == id) {
-                return r;
-            }
-        }
-        return null;
     }
 
     /*
      * The getAverage method gets the average reviews from a given Category variable.
-     * It loops through the database ArrayList,
-     * counting how many in the category exist and adds their score to the total.
-     * If nothing is found, returns -1.
+     * It sets up a query for the database that gets the rounded average review of every object with the matching category.
+     * That number is then returned.
+     * If it fails, it returns -1.
      * If found, it returns the average (total/count).
      */
     public double getAverage(Category cat) {
-        double total = 0;
-        double count = 0;
-        boolean found = false;
-        for(int i = 0; i < database.size(); i++) {
-            Review r = database.get(i);
-            if(r.getCategory() == cat) {
-                found = true;
-                total += (double) r.getRating();
-                count++;
-            }
+       String query = "SELECT ROUND(AVG(rating), 2) FROM reviews WHERE category = ?";
+
+       try(PreparedStatement s = connection.prepareStatement(query)){
+            s.setString(1, cat.name());
+
+           try(ResultSet rs = s.executeQuery()){
+               if (rs.next()){
+                   double avg = rs.getDouble(1);
+
+                   if(rs.wasNull()){
+                       return -1.0;
+                   }
+                   return avg;
+               }
+               return -1.0;
+           }
+       }catch (SQLException e){
+            System.err.println("Error averaging reviews: " + e.getMessage());
+            return -1.0;
         }
-        if (found) {
-            return (total/count);
-        }
-        return -1.0;
     }
 
+    /* The getAll method returns an ArrayList of every review in the database.
+     * This method calls a query for the database to return all reviews in the system.
+     * The method then loops through the resultset, taking the data of each review and turning it into a review object.
+     * These objects are then added to the reviews ArrayList, which is returned.
+     * If there are no reviews in the database or it fails in some way, it returns null.
+     */
     public ArrayList<Review> getAll() {
-        if (database.isEmpty())
+        ArrayList<Review> reviews = new ArrayList<>();
+        String query = "SELECT * FROM reviews";
+        try (Statement s = connection.createStatement()){
+            ResultSet rs = s.executeQuery(query);
+            while(rs.next()){
+                Review r = new Review(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getInt("rating"),
+                        Category.valueOf(rs.getString("category")),
+                        rs.getString("subtype"),
+                        rs.getString("location"),
+                        rs.getDate("date").toLocalDate()
+                );
+                reviews.add(r);
+            }
+            if (reviews.isEmpty())
+                return null;
+            return reviews;
+        }catch (SQLException e){
+            System.err.println("Error gathering reviews: " + e.getMessage());
             return null;
-        return database;
+        }
     }
 }
