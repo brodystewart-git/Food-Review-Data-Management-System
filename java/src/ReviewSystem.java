@@ -1,49 +1,51 @@
 /*
  * Brody Stewart
  * CEN 3024 - Software Development 1
- * March 26th, 2026
+ * April 3rd, 2026
  * ReviewSystem.java
  * This application is the main system (or the View & Controller) of the program.
  * It handles all UI and user interaction, essentially the controller of the program.
- * It prompts the user to input a file on the first menu upon startup. It then loads this file.
- * Once loaded, the main menu is displayed with multiple options.
+ * It prompts the user for mysql database information on the first menu upon startup. It then connects to it.
+ * Once loaded, the main menu is displayed with multiple options and a list of all reviews in the system.
  * Users can then interact with the program by adding reviews, removing reviews, finding reviews, updating reviews,
  * getting the average review score of a category, and displaying all reviews.
  */
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Scanner;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 public class ReviewSystem {
     DatabaseHandler dbHandler;
-    Scanner scanner;
     String path;
     CardLayout cardLayout;
     JPanel deck;
     JButton[] buttons;
     JTextArea console;
     Font buttonFont = new Font("Serif", Font.BOLD, 18);
+    private JTable reviewTable;
+    private DefaultTableModel tableModel;
 
     //Simple constructor that initiates scanner.
     public ReviewSystem() {
-        scanner = new Scanner(System.in);
+        initGui();
     }
 
     // UI Methods Section
     /* The initGui method initializes the GUI system for the user to be displayed content.
      * It uses a Deck system, where pages are stored similarly to a deck of cards and chosen based on when it's needed.
-     * This method is where all pages (except for the update subpage) are initialized and added to the deck.
+     * This method is where all pages (except for the update page) are initialized and added to the deck.
      * It's set up for the first page to ask for a path to a text file.
      * Contains a persistent console.
      */
-    public void initGui() {
+    private void initGui() {
         Color lightBlue = new Color(145, 175, 199);
         Color darkerBlue = new Color(65,89,110);
         cardLayout = new CardLayout();
@@ -71,18 +73,14 @@ public class ReviewSystem {
         frame.add(splitPane, BorderLayout.CENTER);
 
         // Initialize and add pages
-        JPanel inputPage = createInputPage();
+        JPanel inputPage = createLoginPage();
         deck.add(inputPage, "INPUT");
         JPanel mainMenuPanel = mainMenuPage();
         deck.add(mainMenuPanel, "MAIN");
         JPanel addPage = addReviewPage();
         deck.add(addPage, "ADD");
-        JPanel remPage = removeReviewPage();
-        deck.add(remPage, "REM");
         JPanel findPage = findReviewPage();
         deck.add(findPage, "FIND");
-        JPanel updPage = updateReviewPageOne();
-        deck.add(updPage, "UPD");
         JPanel avgPage = avgReviewPage();
         deck.add(avgPage, "AVG");
 
@@ -96,24 +94,42 @@ public class ReviewSystem {
 
     /* The mainMenuPage method creates a JPanel with all elements needed in the Main Menu.
      * This is where the main ways to interact with the program is stored through buttons.
-     * It uses a GridBagLayout to display these buttons, along with a title.
-     * Botton interactions are all sent to handler methods, usually titled [task]ReviewHandler.
+     * It uses a BorderLayout to display these buttons, along with a title and a JTable of all reviews.
+     * Button interactions are all sent to handler methods, usually titled [task]ReviewHandler.
      * * Returns a functioning JPanel to be stored in the deck.
      */
     private JPanel mainMenuPage(){
-        JPanel panel = new JPanel (new GridBagLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
+        String[] columns = {"ID", "Food Name", "Rating", "Category", "Subtype", "Location", "Date"};
 
-        JLabel title = new JLabel("Food Review System");
-        title.setFont(new Font("Serif", Font.BOLD, 50));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        gbc.insets = new java.awt.Insets(0, 0, 50, 0);
-        gbc.anchor = GridBagConstraints.CENTER;
-        panel.add(title, gbc);
+        JLabel title = new JLabel("Food Review System", SwingConstants.CENTER);
+        title.setFont(new Font("Serif", Font.BOLD, 40));
+        panel.add(title, BorderLayout.NORTH);
 
+        tableModel = new DefaultTableModel(columns, 0){
+            @Override
+            public boolean isCellEditable(int row, int column){
+                return false;
+            }
+        };
+
+        reviewTable = new JTable(tableModel);
+        reviewTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);    // might need to change this
+        reviewTable.getTableHeader().setReorderingAllowed(false);
+        reviewTable.setFont(new Font("Monospaced", Font.PLAIN, 18));
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        for (int i = 0; i < reviewTable.getColumnCount(); i++) {
+            reviewTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+
+        JScrollPane scrollPane = new JScrollPane(reviewTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new GridLayout(2,3,10,10));
+        buttonPanel.setPreferredSize(new Dimension(0, 150));
+        buttonPanel.setOpaque(false);
         JButton addBtn = new JButton("Add Review");
         JButton remBtn = new JButton("Remove Review");
         JButton findBtn = new JButton("Find Review");
@@ -121,24 +137,23 @@ public class ReviewSystem {
         JButton avgBtn = new JButton("Average Review by Category");
         JButton dispBtn = new JButton("Display Reviews");
         buttons = new JButton[]{addBtn, remBtn, findBtn, updBtn, avgBtn, dispBtn};
-        Dimension btnSize = new Dimension(300,60);
-        gbc.gridwidth = 1;
-        gbc.insets = new java.awt.Insets(15,15,15,15);
-
-        for (int i = 0; i < buttons.length; i++) {
-            buttons[i].setFont(buttonFont);
-            buttons[i].setPreferredSize(btnSize);
-            gbc.gridx = i % 2;
-            gbc.gridy = (i / 2) + 1;
-            panel.add(buttons[i], gbc);
+        for(JButton b: buttons){
+            b.setFont(new Font ("Serif", Font.BOLD, 20));
+            buttonPanel.add(b);
         }
+        panel.add(buttonPanel, BorderLayout.SOUTH);
 
         addBtn.addActionListener(e -> {
             cardLayout.show(deck, "ADD");
         });
 
         remBtn.addActionListener(e -> {
-            cardLayout.show(deck, "REM");
+            int selectedRow = reviewTable.getSelectedRow();
+            if (selectedRow != -1) {
+                String id = reviewTable.getValueAt(selectedRow, 0).toString();
+                boolean removed = remReviewHandler(id);
+                if(removed) refreshListHandler();
+            }
         });
 
         findBtn.addActionListener(e -> {
@@ -146,7 +161,16 @@ public class ReviewSystem {
         });
 
         updBtn.addActionListener(e -> {
-            cardLayout.show(deck, "UPD");
+            int selectedRow = reviewTable.getSelectedRow();
+            if (selectedRow != -1) {
+                String stringId = reviewTable.getValueAt(selectedRow, 0).toString();
+                Review r = updReviewLocationHandler(stringId);
+                if(r != null) {
+                    JPanel editPage = updateReviewPage(r);
+                    deck.add(editPage, "EDIT");
+                    cardLayout.show(deck, "EDIT");
+                }
+            }
         });
 
         avgBtn.addActionListener(e -> {
@@ -163,18 +187,18 @@ public class ReviewSystem {
         return panel;
     };
 
-    /* The createInputPage method creates a JPanel with all elements needed in the first file path input page.
-     * This is where the user is prompted to input a path to a text file.
-     * It features a simple text field for the user to input the path and a button to submit it.
-     * The content of the text field is sent to the loadFile method to ensure it's a real path.
-     * Returns a functioning JPanel to be stored in the deck.
+    /* This is the createLoginPage method. It returns a page that takes the MySQL input from the user.
+     * It features a gridbaglayout with three text fields for the url, username and password of a MySQL server.
+     * When the user presses okay, the information will be sent to the model to connect to the database.
+     * If it connects, it will refresh the main menu's JTable with the reviews in the database and switch to that page.
+     * If it can't connect, it alerts the user and lets them try again.
      */
-    private JPanel createInputPage(){
+    private JPanel createLoginPage(){
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
 
-        JLabel title = new JLabel("Food Review System", SwingConstants.CENTER);
+        JLabel title = new JLabel("Food Review System Login", SwingConstants.CENTER);
         title.setFont(new Font("Serif", Font.BOLD, 50));
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -183,29 +207,35 @@ public class ReviewSystem {
         gbc.insets = new java.awt.Insets(20, 0, 40, 0);
         panel.add(title, gbc);
 
-        gbc.insets = new java.awt.Insets(10,10,10,10);
-        JLabel label = new JLabel("Enter File Path:");
-        label.setFont(new Font("Serif", Font.BOLD, 18));
         gbc.gridy = 1;
-        panel.add(label,gbc);
+        JTextField addField = new JTextField(20);
+        panel.add(createLabeledField("Server Address:", addField), gbc);
 
-        JTextField inputField = new JTextField(20);
         gbc.gridy = 2;
-        panel.add(inputField, gbc);
+        JTextField userField = new JTextField(20);
+        panel.add(createLabeledField("Username:", userField), gbc);
+
+        gbc.gridy = 3;
+        JPasswordField passField = new JPasswordField(20);
+        panel.add(createLabeledField("Password:", passField), gbc);
 
         JButton okBtn = new JButton("OK");
         okBtn.setFont(buttonFont);
-        gbc.gridy = 3;
+        gbc.gridy = 4;
         panel.add(okBtn,gbc);
+
         okBtn.addActionListener(e ->{
-            boolean gotFile = loadFile(inputField.getText());
-            if(gotFile){
-                printToConsole("Path Found, data added to system.");
-                inputField.setText("");
-                cardLayout.show(deck, "MAIN");
-            }else{
-                printToConsole("Error: Invalid path, please try again.");
-            }
+           String address = addField.getText();
+           String user = userField.getText();
+           String pass = new String(passField.getPassword());
+           dbHandler = new DatabaseHandler(address, user, pass);
+           if(dbHandler.connect()){
+               refreshListHandler();
+               cardLayout.show(deck, "MAIN");
+           }else{
+               printToConsole("Login Failed. Please check your credentials.");
+               dbHandler = null;
+           }
         });
         return panel;
     }
@@ -281,6 +311,7 @@ public class ReviewSystem {
 
         backBtn.addActionListener(e ->{
             clearFields(fields);
+            refreshListHandler();
             cardLayout.show(deck, "MAIN");
         });
 
@@ -301,64 +332,6 @@ public class ReviewSystem {
             }
         });
 
-        return panel;
-    }
-
-    /* The removeReviewPage method creates a JPanel with all elements needed in the remove review page.
-     * This is where the user is prompted to input the ID of a review to be removed.
-     * It takes the information and sends it to remReviewHandler, removing it from the system.
-     * Returns a functioning JPanel to be stored in the deck.
-     */
-    private JPanel removeReviewPage(){
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new java.awt.Insets(15,15,15,15);
-        JTextField idField;
-
-        JLabel title = new JLabel("Remove A Review");
-        title.setFont(new Font("Serif", Font.BOLD, 24));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.insets = new java.awt.Insets(20, 0, 30, 0);
-        panel.add(title, gbc);
-
-        gbc.insets = new java.awt.Insets(10,10,10,10);
-        gbc.weighty = 0;
-        idField = new JTextField(15);
-        gbc.gridy = 1;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        panel.add(createLabeledField("Enter Review ID (If unknown, use Find Review):", idField), gbc);
-
-        gbc.gridwidth = 1;
-        JButton backBtn = new JButton("Back");
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.weighty = 1.0;
-        gbc.anchor = GridBagConstraints.SOUTHEAST;
-        panel.add(backBtn, gbc);
-
-        JButton okBtn = new JButton("OK");
-        gbc.gridx = 1;
-        gbc.gridy = 2;
-        gbc.weighty = 1.0;
-        gbc.anchor = GridBagConstraints.SOUTHEAST;
-        panel.add(okBtn, gbc);
-
-        backBtn.addActionListener(e ->{
-            idField.setText("");
-            cardLayout.show(deck, "MAIN");
-        });
-
-        okBtn.addActionListener(e ->{
-          boolean removed = remReviewHandler(idField.getText().trim());
-            if(removed){
-                idField.setText("");
-            }
-        });
         return panel;
     }
 
@@ -415,6 +388,7 @@ public class ReviewSystem {
         backBtn.addActionListener(e ->{
             nameField.setText("");
             subtypeField.setText("");
+            refreshListHandler();
             cardLayout.show(deck, "MAIN");
         });
 
@@ -430,69 +404,7 @@ public class ReviewSystem {
         return panel;
     }
 
-    /* The updateReviewPageOne method creates a JPanel with all elements needed in the first page of updating a review.
-     * This is where the user is prompted to input the ID of a review.
-     * It takes the information and sends it to updReviewLocationHandler, receiving a review object.
-     * When received, it sets up a temporary subpage and displays it, titled updateReviewPageTwo.
-     * Returns a functioning JPanel to be stored in the deck.
-     */
-    private JPanel updateReviewPageOne(){
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new java.awt.Insets(15,15,15,15);
-        JTextField idField;
-
-        JLabel title = new JLabel("Update A Review");
-        title.setFont(new Font("Serif", Font.BOLD, 24));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.insets = new java.awt.Insets(20, 0, 30, 0);
-        panel.add(title, gbc);
-
-        gbc.insets = new java.awt.Insets(10,10,10,10);
-        gbc.weighty = 0;
-        idField = new JTextField(15);
-        gbc.gridy = 1;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        panel.add(createLabeledField("Enter Review ID (If unknown, use Find Review):", idField), gbc);
-
-        gbc.gridwidth = 1;
-        JButton backBtn = new JButton("Back");
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.weighty = 1.0;
-        gbc.anchor = GridBagConstraints.SOUTHEAST;
-        panel.add(backBtn, gbc);
-
-        JButton okBtn = new JButton("OK");
-        gbc.gridx = 1;
-        gbc.gridy = 2;
-        gbc.weighty = 1.0;
-        gbc.anchor = GridBagConstraints.SOUTHEAST;
-        panel.add(okBtn, gbc);
-
-        backBtn.addActionListener(e ->{
-            idField.setText("");
-            cardLayout.show(deck, "MAIN");
-        });
-
-        okBtn.addActionListener(e ->{
-            Review r = updReviewLocationHandler(idField.getText().trim());
-            idField.setText("");
-            if(r != null) {
-                JPanel editPage = updateReviewPageTwo(r);
-                deck.add(editPage, "EDIT");
-                cardLayout.show(deck, "EDIT");
-            }
-        });
-        return panel;
-    }
-
-    /* The updateReviewPageTwo method creates a JPanel with all elements needed in the second  page of updating a review.
+    /* The updateReviewPage method creates a JPanel with all elements needed in updating a review.
      * This is where the user is prompted to change the review's information to be updated.
      * It takes the review information from the last page and fills all the fields with its data.
      * These fields are four text fields for food name, subtype, location and date.
@@ -501,7 +413,7 @@ public class ReviewSystem {
      * It then deletes itself, returning to the first update page.
      * Returns a functioning JPanel to be stored in the deck.
      */
-    private JPanel updateReviewPageTwo(Review rev){
+    private JPanel updateReviewPage(Review rev){
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
         JTextField nameField, subtypeField, locationField, dateField;
@@ -569,7 +481,8 @@ public class ReviewSystem {
 
         backBtn.addActionListener(e ->{
             clearFields(fields);
-            cardLayout.show(deck, "UPD");
+            cardLayout.show(deck, "MAIN");
+            refreshListHandler();
             deck.remove(panel);
             deck.revalidate();
             deck.repaint();
@@ -589,7 +502,8 @@ public class ReviewSystem {
             boolean added = updReviewHandler(rev.getID(), name, rating, cat, subtype, location, date);
             if(added){
                 clearFields(fields);
-                cardLayout.show(deck, "UPD");
+                refreshListHandler();
+                cardLayout.show(deck, "MAIN");
                 deck.remove(panel);
                 deck.revalidate();
                 deck.repaint();
@@ -646,6 +560,7 @@ public class ReviewSystem {
 
         backBtn.addActionListener(e ->{
             categoryDropDown.setSelectedIndex(0);
+            refreshListHandler();
             cardLayout.show(deck, "MAIN");
         });
 
@@ -656,6 +571,34 @@ public class ReviewSystem {
             }
         });
         return panel;
+    }
+    /* This is the refreshListHandler method.
+     * It simply refreshes the JTable in the main menu to represent all reviews in the database.
+     * This should be called anytime any changes are done to the database.
+     */
+    private void refreshListHandler(){
+        tableModel.setRowCount(0);
+        ArrayList<Review> allReviews = dbHandler.getAll();
+        if(allReviews == null){
+            return;
+        }
+        for (Review r: allReviews){
+            Object[] data = new Object[7];
+            data[0] = r.getID();
+            data[1] =r.getName();
+            data[2] = r.getRating();
+            data[3] = r.getCategory();
+            if(r.getSubtype() == null) {
+                data[4] = "N/A";
+            }else
+                data[4] = r.getSubtype();
+            if(r.getLocation() == null) {
+                data[5] = "N/A";
+            }else
+                data[5] = r.getLocation();
+            data[6] =  r.getDate();
+            tableModel.addRow(data);
+        }
     }
 
     // The clearFields method simply clears and resets any JTextFields or JDropDowns in the fields array.
@@ -689,25 +632,6 @@ public class ReviewSystem {
     private void printToConsole(String content){
         console.append(content + "\n");
         console.setCaretPosition(console.getDocument().getLength());
-    }
-
-    /*
-     * Temporary method for text file loading.
-     * It takes a String path when called.
-     * If correct, it will pass the file to the Database Handler object and return true if successfully loaded.
-     * Otherwise, it will return false.
-     */
-    public boolean loadFile(String path) {
-        path = path.replace("\"", "");
-        File checkFile = new File(path);
-        if (checkFile.exists() && checkFile.isFile() && path.toLowerCase().endsWith(".txt")) {
-            dbHandler = new DatabaseHandler(path);
-            if (!dbHandler.loadDatabase())
-                return false;
-            return true;
-        }else{
-            return false;
-        }
     }
 
     /*
@@ -747,8 +671,8 @@ public class ReviewSystem {
            return false;
        }
        name = stringFormatter(name);
-       Review r = createReview(id, name, rating, cat, subtype, location, trueDate);
-       int added = dbHandler.addReview(r, true);
+       Review r = new Review(id, name, rating, cat, subtype, location, trueDate);
+       int added = dbHandler.addReview(r);
        if(added == 0){
            printToConsole("Error in creating review. Retry.");
            return false;
@@ -899,13 +823,13 @@ public class ReviewSystem {
             return false;
         }
         name = stringFormatter(name);
-        Review r = createReview(id, name, rating, cat, subtype, location, trueDate);
+        Review r = new Review(id, name, rating, cat, subtype, location, trueDate);
         int removed = dbHandler.remReview(id);
         if (removed == 0){
             printToConsole("Error in updating review. Retry.");
             return false;
         }
-        int added = dbHandler.addReview(r, true);
+        int added = dbHandler.addReview(r);
         if(added == 0){
             printToConsole("Error in updating review. Retry.");
             return false;
@@ -952,24 +876,6 @@ public class ReviewSystem {
         for (JButton btn : buttons) {
             btn.setEnabled(true);
         }
-    }
-
-    /* createReview is for creating a review object.
-     * It's made to reduce redundancy in having to check which constructor to use, by having a method that does it.
-     * It returns the review object that is created.
-     */
-    private Review createReview(int ID, String name, int rating, Category cat, String subtype, String location, LocalDate date){
-        Review rev;
-        if (location != null && subtype != null) {
-            rev = new Review(ID, name, rating, cat, subtype, location, date);
-        }else if (location != null) {
-            rev = new Review(ID, name, rating, cat, date, location);
-        }else if (subtype != null) {
-            rev = new Review(ID, name, rating, cat, subtype, date);
-        }else {
-            rev = new Review(ID, name, rating, cat, date);
-        }
-        return rev;
     }
 
     /* nameValidation is a simple method which takes input in regard to the Name field of the review object.
