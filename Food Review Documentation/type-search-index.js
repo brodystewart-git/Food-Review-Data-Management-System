@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"foodreview","l":"Application"},{"p":"foodreview","l":"Category"},{"p":"foodreview","l":"DatabaseHandler"},{"p":"foodreview","l":"Review"},{"p":"foodreview","l":"ReviewSystem"}];updateSearchResults();
