@@ -1,39 +1,63 @@
-/*
- * Brody Stewart
- * CEN 3024 - Software Development 1
- * April 3rd, 2026
- * ReviewSystem.java
- * This application is the main system (or the View & Controller) of the program.
- * It handles all UI and user interaction, essentially the controller of the program.
- * It prompts the user for mysql database information on the first menu upon startup. It then connects to it.
- * Once loaded, the main menu is displayed with multiple options and a list of all reviews in the system.
- * Users can then interact with the program by adding reviews, removing reviews, finding reviews, updating reviews,
- * getting the average review score of a category, and displaying all reviews.
- */
-
+package foodreview;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.Locale;
-import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
+/**
+ * This class consists exclusively of instance methods that are designed to display information and handle user interaction.
+ *
+ * <p>This is the main 'VIEW' and 'CONTROLLER' of the Model-View-Controller architectural pattern. It is meant to handle
+ * all UI and handle all user interaction with the UI. When a user interacts with the program, it directly calls the
+ * Model ({@link DatabaseHandler} to do its job in relation to the chosen task. It also passes all necessary information along,
+ * sometimes in the form of a {@link Review} object. The UI is designed to have a console on the right-hand side,
+ * displaying any output for the user to read. The rest of the UI is designed with a {@link CardLayout} in mind,
+ * treating each page like a card in a deck that can be switched to when told so.</p>
+ *
+ * <p>The user is asked to give basic database information, which is then used to display review information as well as
+ * add, remove, find and update review records in the database. This means that this class relies heavily on the
+ * {@link DatabaseHandler} to do most of the actual functionality in regard to JDBC interactions, {@link Review} for
+ * object storage and passing, and a multitude of {@link JComponent} objects.</p>
+ *
+ * @author Brody Stewart
+ * <p>Course: CEN 3024 - Software Development 1</p>
+ * <p>Assignment: DMS Project</p>
+ * @version 0.9
+ * @since 2026-03-27
+ * @see Review
+ * @see Category
+ * @see DatabaseHandler
+ * @see javax.swing.JComponent
+ * @see java.awt.CardLayout
+ */
+
 public class ReviewSystem {
+    /**The model that handles all JDBC interactions with the MySQL database.*/
     DatabaseHandler dbHandler;
-    String path;
+    /**The layout managed for switching between different UI pages.*/
     CardLayout cardLayout;
+    /**The main container panel that holds the various pages of the program.*/
     JPanel deck;
+    /**Array containing all main menu buttons to be easily disabled and enabled.*/
     JButton[] buttons;
+    /**The output area on the right-hand side of the screen, used for displaying information to the user.*/
     JTextArea console;
+    /**Standardized font for all primary application buttons.*/
     Font buttonFont = new Font("Serif", Font.BOLD, 18);
+    /**The visual table used to display database records in {@link #mainMenuPage()}.*/
     private JTable reviewTable;
+    /**The table model for managing the rows and columns of the {@link #reviewTable}.*/
     private DefaultTableModel tableModel;
 
-    //Simple constructor that initiates scanner.
+    /**
+     * Constructs the ReviewSystem and initializes the graphical user interface.
+     *
+     * <p>This constructor calls {@link #initGui()} to set up all {@link JComponent} objects, layouts,
+     * and event listeners.</p>
+     */
     public ReviewSystem() {
         initGui();
     }
@@ -44,6 +68,16 @@ public class ReviewSystem {
      * This method is where all pages (except for the update page) are initialized and added to the deck.
      * It's set up for the first page to ask for a path to a text file.
      * Contains a persistent console.
+     */
+
+    /**
+     * Initializes the core UI components and displays the first page {@link #createLoginPage()}.
+     *
+     * <p>This method sets up the main {@link JFrame}, {@link CardLayout} and console ({@link JTextArea}. It initializes
+     * all pages ({@link #createLoginPage() Login Page},{@link #mainMenuPage() Main Menu Page},
+     * {@link #addReviewPage() Add Review Page}, {@link #findReviewPage() Find Review Page}
+     * {@link #avgReviewPage() Average Review Page}). These pages are then added to the cardlayout and the Login Page
+     * is selected to be displayed to the user.</p>
      */
     private void initGui() {
         Color lightBlue = new Color(145, 175, 199);
@@ -97,6 +131,19 @@ public class ReviewSystem {
      * It uses a BorderLayout to display these buttons, along with a title and a JTable of all reviews.
      * Button interactions are all sent to handler methods, usually titled [task]ReviewHandler.
      * * Returns a functioning JPanel to be stored in the deck.
+     */
+
+    /**
+     * Creates the main menu panel featuring a data table and navigational buttons.
+     *
+     * <p>This method creates a {@link JTable} with a {@link DefaultTableModel} to display review information.
+     * To allow users to interact with the data, it constructs a grid of buttons that, when pressed, do a specific function.
+     * Some will switch the page using the {@link CardLayout navigation system}. This can be seen with the buttons:
+     * Add Review, Find Review, Update Review and Average Review. For Update review, it even takes the data of the selected
+     * review from the data table to be used in the next page. Others will simply send the selected review's data and
+     * chosen function to the Model to be completed and returned. </p>
+     *
+     * @return {@link JPanel} of the created main menu page, complete with all listeners and JComponents.
      */
     private JPanel mainMenuPage(){
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -187,11 +234,20 @@ public class ReviewSystem {
         return panel;
     };
 
-    /* This is the createLoginPage method. It returns a page that takes the MySQL input from the user.
-     * It features a gridbaglayout with three text fields for the url, username and password of a MySQL server.
-     * When the user presses okay, the information will be sent to the model to connect to the database.
-     * If it connects, it will refresh the main menu's JTable with the reviews in the database and switch to that page.
-     * If it can't connect, it alerts the user and lets them try again.
+    /**
+     * Create the initial page for database authentication.
+     *
+     * <p>This method creates a panel which features {@link JTextField input fields} to take the server address,
+     * username and password of a MySQL server from the user. It features a single 'OK' button for the user
+     * to tell the program they are ready to send their input information.</p>
+     *
+     * <p>When the user presses the 'OK' button, an action listener instantiates the
+     * {@link DatabaseHandler dbHandler} using the information from the text field,
+     * where it attempts to connect to the database. If it's able to connect, it switches the page to the main menu page
+     * using the {@link CardLayout navigation system}. If it fails, it alerts the user that something went wrong
+     * and to try again.</p>
+     *
+     * @return {@link JPanel} of the created login page, complete with all listeners and JComponents.
      */
     private JPanel createLoginPage(){
         JPanel panel = new JPanel(new GridBagLayout());
@@ -246,6 +302,35 @@ public class ReviewSystem {
      * As well as two dropdown menus for category and rating.
      * It takes the information and sends it to newReviewHandler, creating a new review.
      * Returns a functioning JPanel to be stored in the deck.
+     */
+
+    /**
+     * Creates the input page for adding a new review to the system.
+     *
+     * <p>This method features multiple {@link JTextField text fields} and {@link JComboBox dropdowns} for the user to
+     * input and select data for a new Food Review. It features a single 'OK' button for the user
+     * to tell the program they are ready to send their input information.</p>
+     * The featured fields are:
+     * <ul>
+     *     <li>A text field for the food's name.</li>
+     *     <li>An optional text field for the food's subtype.</li>
+     *     <li>An optional text field for the review location.</li>
+     *     <li>A text field for the date that it was eaten.</li>
+     *     <li>A dropdown for the {@link Category}.</li>
+     *     <li>A dropdown for the rating (0-10).</li>
+     * </ul>
+     *
+     * <p>It handles optional data from the subtype and location fields by setting them to {@code null} if they are empty
+     * strings before calling the {@link #newReviewHandler(String, int, Category, String, String, String)} method to
+     * create the review object and add it to the database.</p>
+     *
+     * <p>The 'OK' button takes the input data and sends it to
+     * {@link #newReviewHandler(String, int, Category, String, String, String)}, where the data is validated, and
+     * it returns to let the action listener know if it successfully added the review to the database.
+     * If it passes, it {@link #clearFields(JComponent[]) clears the fields}.
+     * It also features a back button, which clears the fields and returns the page to the main menu.
+     *
+     * @return {@link JPanel} of the created add review page, complete with all listeners and JComponents.
      */
     private JPanel addReviewPage(){
         JPanel panel = new JPanel(new GridBagLayout());
@@ -335,10 +420,17 @@ public class ReviewSystem {
         return panel;
     }
 
-    /* The findReviewPage method creates a JPanel with all elements needed in the find review page.
-     * This is where the user is prompted to input the name and optional subtype of the review.
-     * It takes the information and sends it to findReviewHandler, where it will find reviews matching the data.
-     * Returns a functioning JPanel to be stored in the deck.
+    /**
+     * Creates the find review page for locating specific reviews within the database.
+     *
+     * <p>This method creates a panel that features {@link JTextField input fields} for a review's name and optional
+     * subtype along with an 'OK' button. The 'OK' button triggers an action listener, where if the subtype is empty, sets
+     * them to {@code null}. It then calls {@link #findReviewHandler(String, String)} with the name and subtype, receiving
+     * a boolean that represents if the data was found our not. If it was found, it
+     * {@link #clearFields(JComponent[]) clears the text fields.}</p>
+     *
+     *
+     * @return {@link JPanel} of the created find review page, complete with all listeners and JComponents.
      */
     private JPanel findReviewPage(){
         JPanel panel = new JPanel(new GridBagLayout());
@@ -404,14 +496,33 @@ public class ReviewSystem {
         return panel;
     }
 
-    /* The updateReviewPage method creates a JPanel with all elements needed in updating a review.
-     * This is where the user is prompted to change the review's information to be updated.
-     * It takes the review information from the last page and fills all the fields with its data.
-     * These fields are four text fields for food name, subtype, location and date.
-     * As well as two dropdowns for category and rating.
-     * When the user presses okay, it sends the new information to updateReviewHandler.
-     * It then deletes itself, returning to the first update page.
-     * Returns a functioning JPanel to be stored in the deck.
+    /**
+     * Creates the update page for updating a pre-existing review, selected from the main menu.
+     *
+     * <p>This method features multiple {@link JTextField text fields} and {@link JComboBox dropdowns} for the user to
+     * input and select data to update the review. It features a single 'OK' button for the user
+     * to tell the program they are ready to send their input information.</p>
+     * The featured fields are:
+     * <ul>
+     *     <li>A text field for the food's name.</li>
+     *     <li>An optional text field for the food's subtype.</li>
+     *     <li>An optional text field for the review location.</li>
+     *     <li>A text field for the date that it was eaten.</li>
+     *     <li>A dropdown for the {@link Category}.</li>
+     *     <li>A dropdown for the rating (0-10).</li>
+     * </ul>
+     *
+     * <p>These fields are all pre-filled with the information of the given {@link Review} object that was passed
+     * to it. This allows the user to easily see what the old review was and what they want to edit.</p>
+     *
+     * <p>The 'OK' button takes the input data and sends it to
+     * {@link #updReviewHandler(int, String, int, Category, String, String, String)}, where the data is validated, and
+     * it returns to let the action listener know if it successfully updated the review. If it passes,
+     * it {@link #clearFields(JComponent[]) clears the fields}. It also features a back button, which clears the fields
+     * and returns the page to the main menu. This page is deleted upon completion of the task.</p>
+     *
+     * @param rev   The {@link Review} object that was selected by the user on the Main Menu to be updated.
+     * @return {@link JPanel} of the created update review page, complete with all listeners and JComponents.
      */
     private JPanel updateReviewPage(Review rev){
         JPanel panel = new JPanel(new GridBagLayout());
@@ -513,10 +624,18 @@ public class ReviewSystem {
         return panel;
     }
 
-    /* The avgReviewPage method creates a JPanel with all elements needed in the average review by category page.
-     * The user is shown a simple dropdown that contains all possible food review categories.
-     * When the user preses okay, it sends the category information to the avgReviewHandler method.
-     * Returns a functioning JPanel to be stored in the deck.
+    /**
+     * Creates a page for the user to select a category of food reviews to be calculated into an average review, filtered
+     * by category.
+     *
+     * <p>This method creates a panel which features a single {@link JComboBox dropdown} of {@link Category categories},
+     *  and an 'OK' button for the user to alert the system they are ready for the average of the selected category. It
+     *  also features a back button, which resets the dropdown and returns to the main menu.</p>
+     *
+     *  <p>When the 'OK' button is pressed, {@link #avgReviewHandler(Category)} is called and returns a boolean. If it
+     *  passes, it resets the dropdown.</p>
+     *
+     * @return {@link JPanel} of the created average review page, complete with all listeners and JComponents.
      */
     private JPanel avgReviewPage(){
         JPanel panel = new JPanel(new GridBagLayout());
@@ -572,9 +691,14 @@ public class ReviewSystem {
         });
         return panel;
     }
-    /* This is the refreshListHandler method.
-     * It simply refreshes the JTable in the main menu to represent all reviews in the database.
-     * This should be called anytime any changes are done to the database.
+
+    /**
+     * Synchronizes the UI table in {@link #mainMenuPage()} with the current state of the database.
+     *
+     * <p>This method clears all existing rows in the {@link #tableModel} and fetches a refreshed list of {@link Review}
+     * objects from the {@link DatabaseHandler#getAll()} method. It iterates through the returned list, converting
+     * each object into row format for the table to display. For visual clarity, subtype and location are converted to
+     * {@code 'N/A'} if they are {@code null}.</p>
      */
     private void refreshListHandler(){
         tableModel.setRowCount(0);
@@ -601,7 +725,10 @@ public class ReviewSystem {
         }
     }
 
-    // The clearFields method simply clears and resets any JTextFields or JDropDowns in the fields array.
+    /**
+     * Clears all text fields and resets all dropdowns given in the array.
+     * @param fields    An array of {@link JComponent} containing {@link JTextField JTextFields} and {@link JComboBox JComboBoxes}.
+     */
     private void clearFields(JComponent[] fields){
         for(JComponent c: fields){
             if(c.getClass() == JTextField.class){
@@ -612,10 +739,16 @@ public class ReviewSystem {
         }
     };
 
-    /* The createLabeledField method is for creating a labeled JComponent.
-     * It takes a string and a JComponent. It then creates a JLabel and puts it above that component.
-     * It puts these two elements together in a JPanel and returns that.
-    */
+    /**
+     * Creates a labeled JComponent
+     *
+     * <p>Takes a {@link JComponent} and creates a {@link JLabel} using the given text, combining them into a {@link JPanel}.
+     * This text is set to the top of the component.</p>
+     *
+     * @param text  A {@link String} of the text that will be used to label the component.
+     * @param field The {@link JComponent} to be labeled.
+     * @return  {@link JPanel} containing the labeled component.
+     */
     private JPanel createLabeledField(String text, JComponent field){
         JPanel panel = new JPanel(new BorderLayout(0,5));
 
@@ -626,20 +759,46 @@ public class ReviewSystem {
         return panel;
     }
 
-    // Logic/ Button Handling Section
+    // Logic/Button Handling Section
 
-    // printToConsole is a simple method that "prints" a string to the console UI element.
+    /**
+     * Appends a message to the on-screen console and automatically scrolls to the bottom.
+     *
+     * <p>This method adds the provided text content to the {@link javax.swing.JTextArea console} on the right-hand side
+     * of the screen. It then updates the position to the end of the JComponent to ensure the most recent output is always
+     * the first visible text to the user.</p>
+     *
+     * @param content   The {@link String} message to be displayed to the console.
+     */
     private void printToConsole(String content){
         console.append(content + "\n");
         console.setCaretPosition(console.getDocument().getLength());
     }
 
-    /*
-     * The newReviewHandler communicates between the View and the Model that a new review needs to be saved.
-     * It calls for the program to create a review with the given parameters.
-     * It checks these parameters for validity, alerting the user if something is wrong and returning false.
-     * If it's successfully created, it sends the review to the Database Handler object to be saved and returns true.
-     * * If the database fails to do its job, it will return false.
+    /**
+     * Processes and validates new review data before attempting to create the object and send to the database to be saved.
+     *
+     * This method does the following:
+     * <ol>
+     *     <li>Generates a unique ID using {@link DatabaseHandler#idGenerator()}.</li>
+     *     <li>Validates the format and length of {@code name, subtype, location, and date}</li>
+     *     <li>Standardizes string formatting using {@link #stringFormatter(String)}.</li>
+     *     <li>Constructs a {@link Review} object and passes it to {@link DatabaseHandler#addReview(Review)} to be
+     *     saved to the database.</li>
+     * </ol>
+     *
+     *
+     *<p>If any data validation fails or the database fails to save, it displays an error message to the user and the process
+     * is aborted.</p>
+     *
+     * @param name      The name of the food.
+     * @param rating    The int rating of the review.
+     * @param cat       The {@link Category} enum value.
+     * @param subtype   The optional subtype, can be {@code null}.
+     * @param location  The optional location, can be {@code null}.
+     * @param date      The string representing the date (YYY-MM-DD).
+     * @return  {@code true} if the review was successfully validated and added; {@code false} if any validation failed
+     * or database insertion failed.
      */
     private boolean newReviewHandler(String name, int rating, Category cat, String subtype, String location, String date) {
        int id = dbHandler.idGenerator();
@@ -681,12 +840,19 @@ public class ReviewSystem {
        return true;
     }
 
-    /*
-     * The remReviewHandler communicates between the View and the Model that a review needs to be removed.
-     * It calls for the program to remove a review with the given ID in string form.
-     * It then checks for validity and converts it to an integer.
-     * It gets the ID of the review, then sends that information to the Database Handler to do its job.
-     * If it removes the review, it alerts the user and returns true. Otherwise, alerts and returns false.
+    /**
+     * Removes a given review from the system based on the provided ID string.
+     *
+     * <p>This method validates that the id input is a valid, positive integer. It then validates that it actually exists
+     * in the database using the {@link DatabaseHandler#findReview(int)} method. It logs the details of the review to the
+     * user and removes it from the database with {@link DatabaseHandler#remReview(int)}</p>
+     *
+     * <p>If it fails at any point in validating the id or interacting with the database, it returns false and alerts
+     * the user. Otherwise, it alerts the user it was removed successfully and returns true.</p>
+     *
+     * @param input The ID string retrieved from the UI table.
+     * @return  {@code true} if the review was successfully found and deleted from the database; {@code false} if the ID
+     * was invalid, not found or a database error occurred.
      */
     private boolean remReviewHandler(String input) {
         Review r = null;
@@ -715,15 +881,18 @@ public class ReviewSystem {
         }
     }
 
-
-    /*
-     * The findReviewHandler communicates between the View and the Model that a review needs to be found.
-     * It takes a string name and subtype as parameters.
-     * It checks if they decided to add a subtype or left it blank, changing which DatabaseHandler findReview method it'll use.
-     * It validates input, alerting the user and returning false if something is incorrect.
-     * In the instance it finds reviews, the Database Handler will
-     * return a list of reviews matching the search criteria, and it will be displayed to the user.
-     * If the database fails to do its job, it will let the user know and return false.
+    /**
+     * Validates search criteria and queries the database for reviews matching the information.
+     *
+     * <p>This method validates that the {@code name} and optional {@code subtype} meet length and character requirements.
+     * If the subtype is empty, it calls the {@link DatabaseHandler#findReview(String)} with only the name parameter.
+     * Otherwise, it calls {@link DatabaseHandler#findReview(String, String)} with both to retrieve results. Matching
+     * reviews are then displayed to the user. If no matches are found, a failure message is instead displayed.</p>
+     *
+     * @param name      The name of the food being searched.
+     * @param subtype   The optional subtype to refine the search.
+     * @return  {@code true} if at least one matching review was found; {@code false} if no reviews were found or
+     * a database error occurred.
      */
     private boolean findReviewHandler(String name, String subtype) {
         ArrayList<Review> result = null;
@@ -759,11 +928,16 @@ public class ReviewSystem {
         return true;
     }
 
-    /*
-     * The updReviewLocationHandler communicates between the View and the Model that a review needs to be found for updating.
-     * It takes a string ID as a parameter.
-     * It validates input and converts it to an integer, alerting the user and returning false if something is incorrect.
-     * In the instance the review is found, it returns the review. Otherwise, returns nul and alerts the user.
+    /**
+     * locates and retrieves a review with the matching ID input for the update page.
+     *
+     * <p>This method parses the ID from the provided string and verifies its existence in the database. If found,
+     * the {@link Review} object is returned. If the ID is invalid or the record doesn't exist in the database,
+     * the user is alerted and it returns null.</p>
+     *
+     * @param input The ID string retrieved from the UI table.
+     * @return  {@code Review} object if successfully found; {@code null} if the ID is invalid, the review doesn't exist
+     * or a database error occurs.
      */
     private Review updReviewLocationHandler(String input) {
         Review r = null;
@@ -786,13 +960,31 @@ public class ReviewSystem {
         return r;
     }
 
-    /*
-     * The updReviewHandler communicates between the View and the Model that a review needs to be updated.
-     * It takes review information as a parameter to be added to a Review object.
-     * It validates input and converts into a review.
-     * If something is wrong with input, it alerts the user and returns false.
-     * It then attempts to delete the old review and replace it with the new one.
-     * If successful, returns true. If not, returns false and alerts the user.
+    /**
+     * Takes review data then validates it, creating a review from the information and passing it to update an existing
+     * record in the database.
+     *
+     * This method does the following:
+     * <ol>
+     *     <li>Validates the format and length of {@code name, subtype, location, and date}</li>
+     *     <li>Standardizes string formatting using {@link #stringFormatter(String)}.</li>
+     *     <li>Gathers the old ID and constructs a {@link Review} object, passing it to
+     *     {@link DatabaseHandler#updateReview(int, Review)} to be saved to the database.</li>
+     * </ol>
+     *
+     *
+     *<p>If any data validation fails or the database fails to update, it displays an error message to the user and the
+     * process.</p>
+     *
+     * @param id        The unique ID of the review being updated.
+     * @param name      The updated name of the food item.
+     * @param rating    The updated rating of the review.
+     * @param cat       The updated category of the review.
+     * @param subtype   The updated subtype of the review.
+     * @param location  The updated location of the review.
+     * @param date      The updated date of the review.
+     * @return  {@code true} if validation passed and the database was updated; {@code false} if validation failed or
+     * an error occurred.
      */
     private boolean updReviewHandler(int id, String name, int rating, Category cat, String subtype, String location, String date) {
         boolean usingSubtype = false;
@@ -838,12 +1030,17 @@ public class ReviewSystem {
         return true;
     }
 
-    /*
-     * The avgReviewHandler communicates between the View and the Model that an average needs to be found.
-     * It calls for the program to get the average review of a specified category.
-     * It gets the category from the parameter, then sends that information to the Database Handler to do its job.
-     * If it's successful, returns true and prints out the average value.
-     * If not, it alerts the user and returns false.
+    /**
+     * Retrieves and displays the average rating for a given category.
+     *
+     * <p>This method calls {@link DatabaseHandler#getAverage(Category)} to perform calculations the ratings of all records
+     * matching the given {@link Category}. If an average that's 0 or more is returned, the result is formatted to two
+     * decimal places and displayed to the user. If the database returns a negative value, a failure message is displayed
+     * to the user.</p>
+     *
+     * @param category  The {@link Category} to be averaged.
+     * @return  {@code true} if the average was successfully retried and displayed; {@code false} if the calculation failed
+     * or no data was found.
      */
     private boolean avgReviewHandler(Category category) {
         double result = dbHandler.getAverage(category);
@@ -855,10 +1052,13 @@ public class ReviewSystem {
         return true;
     }
 
-    /*
-     * The dispAllHandler communicates between the View and the Model that the reviews need to be displayed.
-     * It simply calls for the Database Handler to give it all of its reviews in its array.
-     * Then, it loops through them and prints them out to the user.
+    /**
+     * Retrives all reviews from the database and prints them to the console.
+     *
+     * <p>This method retries the complete list of {@link Review} objects using the {@link DatabaseHandler#getAll()}
+     * method. It iterates through the returned list, printing each review's details using the
+     * {@link Review#consoleToString()} method for visual clarity. After the process is complete, it re-enables all buttons
+     * for user interaction. If the database is empty, alerts the user.</p>
      */
     private void dispAllHandler() {
         ArrayList<Review> reviews;
@@ -878,9 +1078,13 @@ public class ReviewSystem {
         }
     }
 
-    /* nameValidation is a simple method which takes input in regard to the Name field of the review object.
-     * It checks if the text is valid: 2-100 characters and contains only letters.
-     * Returns true if valid, false if not.
+    /**
+     * Validates a given 'name' string, in relation to name text fields.
+     *
+     * <p>Validates that the given input is between 2 and 100 characters and contains only letters.</p>
+     *
+     * @param input The string that represents the food name.
+     * @return  {@code true} if the input was valid; {@code false} if the input was invalid.
      */
     private boolean nameValidation(String input){
         int l = input.length();
@@ -889,9 +1093,13 @@ public class ReviewSystem {
         return true;
     }
 
-    /* subtypeValidation is a simple method which takes input in regard to the subtype field of the review object.
-     * It checks if the input is valid: 2-50 characters, contains only letters.
-     * Returns true if valid, false if not.
+    /**
+     * Validates a given 'subtype' string, in relation to subtype text fields.
+     *
+     * <p>Validates that the given input is between 2 and 50 characters and contains only letters.</p>
+     *
+     * @param input The string that represents the food subtype.
+     * @return  {@code true} if the input was valid; {@code false} if the input was invalid.
      */
     private boolean subtypeValidation(String input){
         int l = input.length();
@@ -900,9 +1108,13 @@ public class ReviewSystem {
         return true;
     }
 
-    /* locationValidation is a simple method which takes input in regard to the location field of the review object.
-     * It checks if the input is valid: 2-100 characters and isn't blank.
-     * Returns true if valid, false if not.
+    /**
+     * Validates a given 'name' string, in relation to location text fields.
+     *
+     * <p>Validates that the given input is between 2 and 100 characters.</p>
+     *
+     * @param input The string that represents the location.
+     * @return  {@code true} if the input was valid; {@code false} if the input was invalid.
      */
     private boolean locationValidation(String input){
         int l = input.length();
@@ -911,9 +1123,14 @@ public class ReviewSystem {
         return true;
     }
 
-    /* dateValidation is a simple method which takes input in regard to the date field of the review object.
-     * It checks if the input is valid: Meets the format of LocalDate (YYYY-MM-DD), ensures it's a valid date.
-     * Returns the validated date.
+    /**
+     * Validates a given 'date' string, in relation to date text fields.
+     *
+     * <p>Validates that the given input is able to be converted into a {@link LocalDate}. Also validates if the date
+     * is real and not set in the future.</p>
+     *
+     * @param input The string that represents the date (YYYY-MM-DD).
+     * @return  {@link LocalDate Converted Date} if the input was valid; {@code null} if the input was invalid.
      */
     private LocalDate dateValidation(String input){
         LocalDate date = null;
@@ -929,7 +1146,15 @@ public class ReviewSystem {
         return date;
     }
 
-    // StringFormatter simply ensures that an inputted string and makes the first letters of every word upper case.
+    /**
+     * Formats a string to title case, ensuring consistent data entry.
+     *
+     * <p>This method splits the given input into words and capitalizes the first letter of each word utilizing a for each
+     * loop. Every other letter is made to be lowercase. Use this to standardize text input before storage in the database.</p>
+     *
+     * @param input The text to be formatted.
+     * @return  {@link String}, formatted to title-case;
+     */
     private String stringFormatter(String input){
         StringBuilder result = new StringBuilder();
         if(input == null || input.isEmpty())
