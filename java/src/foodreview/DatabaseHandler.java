@@ -1,46 +1,62 @@
-/*
- * Brody Stewart
- * CEN 3024 - Software Development 1
- * April 3rd, 2026
- * Application.java
- * This application handles all database interactions. This means that it will connect to a MySQL database
- * with the given information from the ReviewSystem.
- * All methods in the program are for directly acting on data based on what the controller tells it to do.
- * Every time something is changed with the database array, it is saved to a text file.
- * The load, save and id generator methods are temporary, for the sake of accessing the text file.
- * It adds, removes, finds and updates reviews in the database.
- */
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.time.LocalDate;
+package foodreview;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Scanner;
 import java.sql.*;
 
+/**
+ * This class consists exclusively of instance methods that are designed to directly interact with a MySQL database.
+ *
+ * <p>This is the main 'MODEL' of the Model-View-Controller architectural pattern. It is meant to handle all JDBC
+ * functionality within the Food Review System application. This means it's related to {@link Review} for objects and data,
+ * {@link Category} for Category enum variables and {@link ReviewSystem} for the user interaction and object instantiation.</p>
+ *
+ * <p>The methods in this class utilize information from {@link Review} objects, taking the data from the objects and
+ * adding it to the database. It also returns, removes and updates Review data from the database. The class expects a
+ * valid server address, username and password when constructing an object. If a valid one isn't given, then it fails.</p>
+ *
+ * @author Brody Stewart
+ * <p>Course: CEN 3024 - Software Development 1</p>
+ * <p>Assignment: DMS Project</p>
+ * @version 0.9
+ * @since 2026-03-27
+ * @see Review
+ * @see Category
+ * @see ReviewSystem
+ * @see java.sql.Connection
+ * @see java.sql.DriverManager
+ * @see java.sql.ResultSet
+ */
+
 public class DatabaseHandler {
+    /**The connection to the database.*/
     private Connection connection;
+    /**The server address of the database server.*/
     private String serverAddress;
+    /**The username used for database authentication.*/
     private String username;
+    /**The password used for database authentication.*/
     private String password;
 
-    // Simple constructor that gets the MySQL database information.
+    /**
+     * Constructs a new DatabaseHandler and initializes the credentials.
+     *
+     * @param address   The server address for the MySQL database.
+     * @param user      The username for database authentication.
+     * @param pass      The password for database authentication.
+     */
     public DatabaseHandler(String address, String user, String pass){
         this.serverAddress = address;
         this.username = user;
         this.password = pass;
     }
 
-    /* This is the connect method. Its task is to connect a MySQL database using the information provided by the user.
-     * It concatenates a string of server address to a real mysql address
-     * and attempts to connect using the username and password.
-     * If successful, it creates a food review database if there isn't one in the schema.
-     * Similarly, it creates a review table with all necessary values if there isn't one in the database.
-     * If it fails to connect or do any of these functions, it returns false. Otherwise, returns true.
+    /**
+     * Establishes a connection with a MySQL server, ensuring the required database and table exist.
+     *
+     * <p>This method attempts to create a {@code food_review_project} database and a {@code reviews} table
+     * if they aren't already present in the server.</p>
+     *
+     * @return {@code true} if the connection and/or setup were successful; {@code false} if any task failed and
+     * a {@link SQLException} occured.
      */
     public boolean connect(){
         try{
@@ -68,9 +84,14 @@ public class DatabaseHandler {
         }
     }
 
-    /* This is the idGenerator method. It returns the next free int ID.
-     * It asks the database for the highest id value and adds one, returning it.
-     * If this fails, it returns -1.
+    /**
+     * Generates the next free and unique ID from the database for a review.
+     *
+     * <p>This method queries the {@code reviews} table for the highest existing ID and increments it by one
+     * to ensure the next review has a unique identifier.</p>
+     *
+     * @return The next available {@code int} ID; {@code -1} if the ID can't be generated or a
+     * {@code SQLException} occurs.
      */
     public int idGenerator() {
         String query = "SELECT MAX(id) FROM reviews";
@@ -85,12 +106,15 @@ public class DatabaseHandler {
         return -1;
     }
 
-    /*
-     * The addReview method simply adds a given review object to the database.
-     * It runs a query to insert the review into the database using the review's variables.
-     * It returns 0 if it fails to be added.
-     * It returns 1 if it was successfully added.
-    */
+    /**
+     * Inserts a new record into the database using review data.
+     *
+     * <p>This method takes data from the provided {@link Review} object and runs an {@code INSERT} statement on the
+     * table. It handles optional fields, checking for null values before insertion.</p>
+     *
+     * @param r The {@link Review} object with the data to be stored.
+     * @return {@code 1} if the review was successfully added; {code 0} if it failed due to a {code SQLException}.
+     */
     public int addReview(Review r) {
         String query = "INSERT INTO reviews (id, name, rating, category, subtype, location, date) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
@@ -118,11 +142,14 @@ public class DatabaseHandler {
         }
     }
 
-    /*
-     * The remReview method takes an ID of a review and tried to remove that review from the database.
-     * It runs a query to delete the review at the given id on the database.
-     * It returns 0 if it fails.
-     * It returns 1 if it was successfully removed.
+    /**
+     * Deletes a record from the database at the given id.
+     *
+     * <p>This method takes an int {@code id} and uses it to run {@code DELETE} query on the reviews table. This will
+     * remove the review from the database entirely.</p>
+     *
+     * @param id    The ID of the review to be deleted.
+     * @return  {@code 1} if the review was successfully removed; {code 0} if it failed due to a {code SQLException}.
      */
     public int remReview(int id) {
       String query = "DELETE FROM reviews WHERE id = ?";
@@ -140,12 +167,16 @@ public class DatabaseHandler {
       }
     }
 
-
-    /*
-     * The updateReview method updates a review at a given ID with the given Review object.
-     * It runs a query on the database to update the review with the Review r's information at the given ID.
-     * It returns 0 if it fails.
-     * It returns 1 if it was successfully updated.
+    /**
+     * Updates a record with at the given id with the given review data.
+     *
+     * <p>This method takes an int {@code id} and a {@link Review} object. An {@code UPDATE} query is then run on the
+     * record at the given id, replacing its information with the data in the Review object. This updates the record
+     * to reflect the new given information.</p>
+     *
+     * @param id    The id of the review to be updated.
+     * @param r     The {@link Review} object with the data to be stored.
+     * @return    {@code 1} if the review was successfully updated; {code 0} if it failed due to a {code SQLException}
      */
     public int updateReview(int id, Review r) {
         String query = "UPDATE reviews SET name = ?, rating = ?, category = ?, subtype = ?, location = ?, date = ? WHERE id = ?";
@@ -178,11 +209,15 @@ public class DatabaseHandler {
         }
     }
 
-    /*
-     * This findReview method is for finding a review only by name.
-     * It takes a String name and searches the database for any matching reviews with that name.
-     * It adds all matching reviews to an arraylist and returns it.
-     * If nothing is found, it returns null.
+    /**
+     * Searches the database for reviews that match the given name.
+     *
+     * <p>This method performs a query on the reviews table, {@code SELECT}. It then constructs objects from the results,
+     * mapping the database types back to Java types, such as String and {@link Category}.</p>
+     *
+     * @param name  The name of the review(s) to search for.
+     * @return  {@link ArrayList} of matching {@link Review} objects; {@code null} if no matches are found or a
+     * {@code SQLException} occurs.
      */
     public ArrayList<Review> findReview(String name) {
         ArrayList<Review> reviews = new ArrayList<>();
@@ -215,11 +250,16 @@ public class DatabaseHandler {
         }
     }
 
-    /*
-     * This findReview method is for finding a review by name and subtype.
-     * It takes a String name and String subtype, searching the database for any matching reviews with that data.
-     * It adds all matching reviews to an arraylist and returns it.
-     * If nothing is found, it returns null.
+    /**
+     * Searches the database for reviews that match the given name and subtype.
+     *
+     * <p>This method performs a query on the reviews table, {@code SELECT}. It then constructs objects from the results,
+     * mapping the database types back to Java types, such as String and {@link Category}.</p>
+     *
+     * @param name  The name of the review(s) to search for.
+     * @param subtype The subtype of the review(s) to search for.
+     * @return  {@link ArrayList} of matching {@link Review} objects; {@code null} if no matches are found or a
+     * {@code SQLException} occurs.
      */
     public ArrayList<Review> findReview(String name, String subtype) {
         ArrayList<Review> reviews = new ArrayList<>();
@@ -253,11 +293,14 @@ public class DatabaseHandler {
         }
     }
 
-    /*
-     * This findReview method is for finding a review by ID.
-     * It takes an integer ID and searches the database for any matching reviews with that data.
-     * It returns the matching Review.
-     * If nothing is found, it returns null.
+    /**
+     * Searches the database for the review with the given id.
+     *
+     * <p>This method performs a query on the reviews table, {@code SELECT}. It then constructs an object from the result,
+     * mapping the database types back to Java types, such as String and {@link Category}.</p>
+     *
+     * @param id  The id of the review to search for.
+     * @return  {@link Review} object matching the id; {@code null} if no match is found or a {@code SQLException} occurs.
      */
     public Review findReview(int id) {
         String query = "SELECT * FROM reviews WHERE id = ?";
@@ -286,12 +329,16 @@ public class DatabaseHandler {
         }
     }
 
-    /*
-     * The getAverage method gets the average reviews from a given Category variable.
-     * It sets up a query for the database that gets the rounded average review of every object with the matching category.
-     * That number is then returned.
-     * If it fails, it returns -1.
-     * If found, it returns the average (total/count).
+    /**
+     * Calculates the average rating for all reviews from a given category.
+     *
+     * <p>This method performs a query {@code SELECT ROUND(AVG)} on the reviews in the database that match the given
+     * {@link Category}. The SQL Query gathers this information, averages it and reounds it to two decimal places. The
+     * method then takes this information and converts it into a decimal to be returned.</p>
+     *
+     * @param cat The {@link Category} to filter the reviews by.
+     * @return  The average rating as a {@code double}; {@code -1.0} if there are no reviews in that category or a
+     * {@code SQLException} occurs.
      */
     public double getAverage(Category cat) {
        String query = "SELECT ROUND(AVG(rating), 2) FROM reviews WHERE category = ?";
@@ -316,11 +363,15 @@ public class DatabaseHandler {
         }
     }
 
-    /* The getAll method returns an ArrayList of every review in the database.
-     * This method calls a query for the database to return all reviews in the system.
-     * The method then loops through the resultset, taking the data of each review and turning it into a review object.
-     * These objects are then added to the reviews ArrayList, which is returned.
-     * If there are no reviews in the database or it fails in some way, it returns null.
+    /**
+     *  Gathers all reviews in the database, converted to Java datatypes.
+     *
+     *  <p>This method runs a {@code SELECT} query that returns all records in the database. Each record is then
+     *  converted into its Java equivalent, including {@link Category}. They are all then put into an
+     *  ArrayList to be returned.</p>
+     *
+     * @return {@link ArrayList} of {@link Review} objects; {@code null} if there were no reviews in the database or
+     * an {@code SQLException} occurred.
      */
     public ArrayList<Review> getAll() {
         ArrayList<Review> reviews = new ArrayList<>();
